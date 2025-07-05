@@ -1,0 +1,631 @@
+import React, { useState,useEffect,useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity ,FlatList} from 'react-native';
+import { RadioButton, Checkbox,Card } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const originalTrainData = [
+  { id: 1, name: 'Express A', availableSeats: 5, classCode: '1A', departureTime: '08:30', duration: 180, arrivingStation: 'Station X' },
+  { id: 2, name: 'Express B', availableSeats: 0, classCode: '2S', departureTime: '13:15', duration: 120, arrivingStation: 'Station Y' },
+  { id: 3, name: 'Express C', availableSeats: 10, classCode: '3A', departureTime: '06:45', duration: 240, arrivingStation: 'Station Z' },
+  { id: 4, name: 'Express D', availableSeats: 3, classCode: 'SL', departureTime: '19:00', duration: 300, arrivingStation: 'Station X' },
+  { id: 5, name: 'Express E', availableSeats: 7, classCode: '2S', departureTime: '11:20', duration: 150, arrivingStation: 'Station Y' },
+  { id: 6, name: 'Express F', availableSeats: 0, classCode: '1A', departureTime: '21:30', duration: 200, arrivingStation: 'Station Z' },
+  { id: 7, name: 'Express G', availableSeats: 15, classCode: '3A', departureTime: '05:00', duration: 180, arrivingStation: 'Station X' },
+  { id: 8, name: 'Express H', availableSeats: 8, classCode: 'SL', departureTime: '14:45', duration: 210, arrivingStation: 'Station Y' },
+  { id: 9, name: 'Express I', availableSeats: 2, classCode: '2S', departureTime: '17:10', duration: 270, arrivingStation: 'Station Z' },
+  { id: 10, name: 'Express J', availableSeats: 6, classCode: '1A', departureTime: '09:50', duration: 190, arrivingStation: 'Station X' },
+];
+
+const timeRanges = {
+  Morning: { start: '05:00', end: '11:59' },
+  Afternoon: { start: '12:00', end: '16:59' },
+  Evening: { start: '17:00', end: '20:59' },
+  Night: { start: '21:00', end: '04:59' },
+};
+
+
+const Icons = [
+  { t1: 'ticket-confirmation-outline', t2: 'Quota' },
+  { t1: 'sort-reverse-variant', t2: 'Sort' },
+  { t1: 'train', t2: 'Available' },
+  { t1: 'air-humidifier', t2: 'Ac' },
+  { t1: 'filter-outline', t2: 'Filter' }
+];
+
+const TrainBooking = () => {
+    const [selectRadioButton, setSelectRadioButton] = useState('First');
+const [sortOption, setSortOption] = useState('Default');
+const [availableOnly, setAvailableOnly] = useState(false);
+const [selectedClasses, setSelectedClasses] = useState([]); // e.g. ['1A', '2S']
+const [selectedTimes, setSelectedTimes] = useState([]); // e.g. ['Morning', 'Evening']
+const [selectedStations, setSelectedStations] = useState([]); // e.g. ['Station X']
+
+const [sortModalVisible, setSortModalVisible] = useState(false);
+const [selectedSortOption, setSelectedSortOption] = useState('departure');
+const [showSortBox, setShowSortBox] = useState(true);
+
+const [trains, setTrains] = useState(originalTrainData);
+const [filteredTrains, setFilteredTrains] = useState(originalTrainData);
+const [showTrainList, setShowTrainList] = useState(true);
+
+const [selectTab, setSelectTab] = useState(1);
+const [selectTab2, setSelectTab2] = useState(1);
+
+const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+const [visible, setVisible] = useState(false);
+const [modalVisible, setModalVisible] = useState(null);
+const [ModalVisible,setmodalvisible] = useState('');
+
+function isTimeInRange(time, start, end) {
+  if (start <= end) return time >= start && time <= end;
+  return time >= start || time <= end;
+}
+  const toggleClass = code =>
+    setSelectedClasses(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+
+  const toggleTime = label =>
+    setSelectedTimes(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
+
+  const toggleStation = station =>
+    setSelectedStations(prev => prev.includes(station) ? prev.filter(s => s !== station) : [...prev, station]);
+
+  const filteredAndSortedTrains = useMemo(() => {
+    let filtered = [...originalTrainData];
+
+    if (availableOnly) {
+      filtered = filtered.filter(train => train.availableSeats > 0);
+    }
+
+    if (selectedClasses.length > 0) {
+      filtered = filtered.filter(train => selectedClasses.includes(train.classCode));
+    }
+
+    if (selectedTimes.length > 0) {
+      filtered = filtered.filter(train =>
+        selectedTimes.some(label => {
+          const range = timeRanges[label];
+          return isTimeInRange(train.departureTime, range.start, range.end);
+        })
+      );
+    }
+
+    if (selectedStations.length > 0) {
+      filtered = filtered.filter(train => selectedStations.includes(train.arrivingStation));
+    }
+
+    switch (sortOption) {
+      case 'Available First':
+        filtered.sort((a, b) => b.availableSeats - a.availableSeats);
+        break;
+      case 'Shortest First':
+        filtered.sort((a, b) => a.duration - b.duration);
+        break;
+      case 'Earliest First':
+        filtered.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+        break;
+      case 'Latest First':
+        filtered.sort((a, b) => b.departureTime.localeCompare(a.departureTime));
+        break;
+      default:
+        filtered.sort((a, b) => a.id - b.id);
+        break;
+    }
+
+    return filtered;
+  }, [selectRadioButton, sortOption, availableOnly, selectedClasses, selectedTimes, selectedStations]);
+
+const openModal=()=>{
+    setVisible(true);
+    setModalVisible(true);
+    setShowTrainList(true);
+};
+const hideModal=()=>{
+    setVisible(false);
+    setModalVisible(null);
+    setShowTrainList(false);
+}
+
+    return (
+        <View style={{ flex: 1 }}>
+            <ScrollView style={{ padding: 20, backgroundColor: '#f7f7f7', flex: 1, paddingBottom: 30 }}>
+                <View style={{ marginBottom: 20, flexDirection: 'row', gap: 20, alignItems: 'center' }}>
+                    <Icon onPress={()=>navigation.navigate('trainbooking')}name="arrow-left" size={26} color="black" />
+                    <View>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>PUNE to CSTM</Text>
+                        <Text style={{ fontSize: 14 }}>Friday, 23 May | 35 trains</Text>
+                    </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                    {['Thu 22', 'Fri 23', 'Sat 24', 'Sun 25', 'Mon 26'].map((day, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            onPress={() => setSelectTab(index)}
+                            style={{
+                                backgroundColor: selectTab === index ? '#223ccf' : '#eee',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 5,
+                                marginRight: 10,
+                            }}
+                        >
+                            <Text style={{ color: selectTab === index ? '#fff' : '#000' }}>{day}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Card 1 */}
+  <Card style={{ backgroundColor: 'white', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>22226 Csmt Vandebharat</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>09:20 AM - 12:35 PM (03h 15m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹715</Text>
+            <Text>Available 21</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')} style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>TATKAL ₹980</Text>
+            <Text>Available 46</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>EC</Text>
+            <Text>Available</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 2 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>12126 Pragati Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>07:50 AM - 11:25 AM (03h 35m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>TATKAL ₹510</Text>
+            <Text>Available 1</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>GNWL 51</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC</Text>
+            <Text>GNWL</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 3 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>12124 Deccan Queen</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>07:15 AM - 10:25 AM (03h 10m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹610</Text>
+            <Text>Available 30</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>GNWL 51</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>Available 50</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 4 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>22106 Indrayani Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>06:35 AM - 09:55 AM (03h 20m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹610</Text>
+            <Text>Available 25</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>Available 40</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>GNWL 51</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 5 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>12128 Intercity Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>05:55 PM - 09:05 PM (03h 10m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')} style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹610</Text>
+            <Text>Available 20</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹620</Text>
+            <Text>Available 22</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>Available 35</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 6 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>11027 Chalukya Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>06:00 AM - 09:45 AM (03h 45m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹630</Text>
+            <Text>Available 18</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹620</Text>
+            <Text>Available 22</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹110</Text>
+            <Text>Available 42</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 7 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>12702 Hussainsagar Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>04:30 PM - 08:10 PM (03h 40m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹620</Text>
+            <Text>Available 22</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹105</Text>
+            <Text>GNWL 51</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹100</Text>
+            <Text>Available 37</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Card 8 */}
+      <Card style={{ backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 8, elevation: 3 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>12220 Mumbai AC Express</Text>
+        <Text style={{ marginVertical: 5, color: '#444' }}>08:00 AM - 11:20 AM (03h 20m)</Text>
+        <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0 }}>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹640</Text>
+            <Text>Available 28</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, marginRight: 5, padding: 8, backgroundColor: '#d0f0c0', borderRadius: 6, elevation: 0 }}>
+            <Text>2S ₹110</Text>
+            <Text>Available 43</Text>
+          </Card>
+          <Card onPress={()=>navigation.navigate('Availability')}style={{ flex: 1, padding: 8, backgroundColor: '#f5f5dc', borderRadius: 6, elevation: 0 }}>
+            <Text>CC ₹630</Text>
+            <Text>Available 33</Text>
+          </Card>
+        </Card.Content>
+      </Card>
+
+            </ScrollView>
+            <View style={{flex:1}}>
+            {!showTrainList && visible && modalVisible === 'Quota' && (
+                <View
+                    style={{
+                        height: 430,
+                        backgroundColor: 'white',
+                        borderRadius: 20,
+                        paddingVertical: 15,
+                        paddingHorizontal: 20,
+                        justifyContent: 'space-between',
+                    }}
+                >
+                    {/* Header */}
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: 15,
+                        }}
+                    >
+                        <Text style={{ fontSize: 22, fontWeight: 'bold' }}>Select quota</Text>
+                        <Icon onPress={hideModal} name="close" size={25} color="black" />
+                    </View>
+
+                    {/* Options container */}
+                    <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                        {/* Option 1 */}
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                borderBottomWidth: 1,
+                                borderColor: 'lightgrey',
+                                paddingVertical: 12,
+                                alignItems: 'flex-start',
+                            }}
+                        >
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '500' }}>General + Tatkal</Text>
+                                <Text style={{ fontSize: 14, marginTop: 5, color: '#555' }}>
+                                    Applicable for all
+                                </Text>
+                            </View>
+                            <RadioButton
+                                value="First"
+                                color="red"
+                                status={SelectRadioButton === 'First' ? 'checked' : 'unchecked'}
+                                onPress={() => setSelectRadioButton('First')}
+                            />
+                        </View>
+
+                        {/* Option 2 */}
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                borderBottomWidth: 1,
+                                borderColor: 'lightgrey',
+                                paddingVertical: 12,
+                                alignItems: 'flex-start',
+                            }}
+                        >
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '500' }}>Senior citizen (SS)</Text>
+                                <Text style={{ fontSize: 14, marginTop: 5, color: '#555' }}>
+                                    Applicable for male (60 y or above) and female (45y or above) either travelling alone or max 2 passengers, failing which seats will be allotted in general quota.
+                                </Text>
+                            </View>
+                            <RadioButton
+                                value="Second"
+                                color="red"
+                                status={SelectRadioButton === 'Second' ? 'checked' : 'unchecked'}
+                                onPress={() => setSelectRadioButton('Second')}
+                            />
+                        </View>
+
+                        {/* Option 3 */}
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                paddingVertical: 12,
+                                alignItems: 'flex-start',
+                            }}
+                        >
+                            <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '500' }}>Ladies quota (LD)</Text>
+                                <Text style={{ fontSize: 14, marginTop: 5, color: '#555' }}>
+                                    Applicable only for female passengers and male child (11 years or above)
+                                </Text>
+                            </View>
+                            <RadioButton
+                                value="Third"
+                                color="red"
+                                status={SelectRadioButton === 'Third' ? 'checked' : 'unchecked'}
+                                onPress={() => setSelectRadioButton('Third')}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Optional button placeholder */}
+                    <TouchableOpacity style={{ marginTop: 10 }}>
+                        <Text style={{ fontSize: 20, textAlign: 'center' }}></Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+            {!showTrainList && visible && modalVisible === 'Sort' &&(
+                <View style={{ flex: 1, paddingTop: 50, backgroundColor: 'white' }}>
+                    {showSortBox && (
+                        <View style={{ backgroundColor: 'white', borderTopLeftRadius: 10, borderTopRightRadius: 10, padding: 16 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' }}>Sort trains</Text>
+                                <TouchableOpacity onPress={() => setShowSortBox(false)}>
+                                    <Text style={{ fontSize: 20, color: '#333' }}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView>
+                                {[
+                                    { label: 'Default', options: ['Default'] },
+                                    { label: 'Availability', options: ['Available First'] },
+                                    { label: 'Duration', options: ['Shortest First'] },
+                                    { label: 'Departure', options: ['Earliest First', 'Latest First'] },
+                                    { label: 'Arrival', options: ['Earliest First', 'Latest First'] },
+                                ].map((section, index) => (
+                                    <View key={index} style={{ marginBottom: 12 }}>
+                                        <Text style={{ fontSize: 15, color: 'black', marginBottom: 6 }}>{section.label}</Text>
+                                        {section.options.map((option, idx) => (
+                                            <RadioButton.Item color='red'
+                                                key={idx}
+                                                label={option}
+                                                value={option}
+                                                status={sortOption === option ? 'checked' : 'unchecked'}
+                                                onPress={() => setSortOption(option)}
+                                                labelStyle={{ fontStyle: 'italic', fontFamily: 'serif', fontSize: 15,color:'grey' }}
+                                                position="trailing"
+                                                mode="android"
+                                                style={{ paddingVertical: 0 }}
+                                            />
+                                        ))}
+                                        <View style={{ height: 1, backgroundColor: '#ccc', marginTop: 6 }} />
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+                </View>
+            )}
+            {!showTrainList && visible && modalVisible === 'Filter' && (
+                <View style={{ backgroundColor: '#fff', paddingTop: 40, }}>
+                    <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+                        <View
+                            style={{
+                                padding: 16,
+                                backgroundColor: '#f7f2f2',
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <View>
+                                <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Filter results</Text>
+                                <Text style={{ fontSize: 14, color: '#444', marginTop: 2 }}>
+                                    {selectedClasses.length + (availableOnly ? 1 : 0) + selectedTimes.length + selectedStations.length} filters selected ·{' '}
+                                    <Text onPress={clearAll} style={{ color: '#0066cc' }}>
+                                        Clear all
+                                    </Text>
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setVisible(false)}>
+                                <Text style={{ fontSize: 26 }}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Availability */}
+                        <Text style={{ fontWeight: 'bold', fontSize: 16, marginVertical: 12 }}>Availability</Text>
+                        <TouchableOpacity
+                            onPress={() => setAvailableOnly(!availableOnly)}
+                            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}
+                        >
+                            <Checkbox
+                                status={availableOnly ? 'checked' : 'unchecked'}
+                                color="#d32f2f"
+                                onPress={() => setAvailableOnly(!availableOnly)}
+                            />
+                            <Text style={{ fontSize: 15 }}>Available only</Text>
+                        </TouchableOpacity>
+
+                        {/* Ticket Class */}
+                        <View style={{ height: 1, backgroundColor: '#ccc', marginVertical: 10 }} />
+                        <Text style={{ fontWeight: 'bold', fontSize: 16, marginVertical: 12 }}>Ticket class</Text>
+                        {ticketClasses.map(({ code, label }) => (
+                            <TouchableOpacity
+                                key={code}
+                                onPress={() => toggleClass(code)}
+                                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}
+                            >
+                                <Checkbox
+                                    status={selectedClasses.includes(code) ? 'checked' : 'unchecked'}
+                                    color="#d32f2f"
+                                    onPress={() => toggleClass(code)}
+                                />
+                                <Text style={{ fontSize: 15 }}>{label}</Text>
+                            </TouchableOpacity>
+                        ))}
+
+                        {/* Time Filters */}
+                        <View style={{ height: 1, backgroundColor: '#ccc', marginVertical: 10 }} />
+                        <Text style={{ fontWeight: 'bold', fontSize: 16, marginVertical: 12 }}>Departure Time</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                            {timeFilters.map(({ label, time }) => (
+                                <TouchableOpacity
+                                    key={label}
+                                    style={{
+                                        width: '48%',
+                                        borderWidth: 1,
+                                        borderColor: selectedTimes.includes(label) ? '#d32f2f' : '#ccc',
+                                        backgroundColor: selectedTimes.includes(label) ? '#fdecea' : '#fff',
+                                        padding: 10,
+                                        borderRadius: 10,
+                                        marginBottom: 10,
+                                    }}
+                                    onPress={() => toggleTime(label)}
+                                >
+                                    <Text style={{ fontWeight: '600', fontSize: 15 }}>{label}</Text>
+                                    <Text style={{ fontSize: 13, color: '#555' }}>{time}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Arriving Stations */}
+                        <View style={{ height: 1, backgroundColor: '#ccc', marginVertical: 10 }} />
+                        <Text style={{ fontWeight: 'bold', fontSize: 16, marginVertical: 12 }}>Arriving Stations</Text>
+                        {stationList.map((station) => (
+                            <TouchableOpacity
+                                key={station}
+                                onPress={() => toggleStation(station)}
+                                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}
+                            >
+                                <Checkbox
+                                    status={selectedStations.includes(station) ? 'checked' : 'unchecked'}
+                                    color="#d32f2f"
+                                    onPress={() => toggleStation(station)}
+                                />
+                                <Text style={{ fontSize: 15 }}>{station}</Text>
+                            </TouchableOpacity>
+                        ))}
+
+                        {/* Show Trains button */}
+                        <TouchableOpacity
+                            style={{ margin: 16, backgroundColor: '#d32f2f', paddingVertical: 14, borderRadius: 8, alignItems: 'center' }}
+                            onPress={() => {
+                                console.log('Show trains clicked');
+                                setVisible(false);
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>Show Trains</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#383838', marginTop: 20, width: '100%', paddingVertical: 10 }}>
+                {Icons.map((icon, index) => (
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSelectTab2(index);
+                            setmodalvisible(Icons[index].t2); // Sets modal type, e.g., "Sort"
+                            setVisible(true);
+                        }}
+                        key={index}
+                        style={{ alignItems: 'center', paddingHorizontal: 10 }}
+                    >
+                        <Icon
+                            name={icon.t1}
+                            size={35}
+                            color={selectTab2 === index ? 'red' : 'white'}
+                        />
+                        <Text style={{
+                            fontSize: 16,
+                            color: selectTab2 === index ? 'red' : 'white',
+                            marginTop: 4
+                        }}>
+                            {icon.t2}
+                        </Text>
+                    </TouchableOpacity>
+
+                ))}
+                {showTrainList && (
+      <FlatList
+        data={filteredAndSortedTrains}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={{ padding: 16, borderBottomWidth: 1, borderColor: '#ccc' }}>
+            <Text>{item.name} - {item.classCode}</Text>
+            <Text>Seats: {item.availableSeats}</Text>
+            <Text>Departure: {item.departureTime}</Text>
+            <Text>Duration: {item.duration} mins</Text>
+            <Text>Arrives at: {item.arrivingStation}</Text>
+          </View>
+        )}
+      />
+    )}
+  </View>
+            </View>
+
+
+        </View>
+
+    );
+};
+
+export default TrainBooking;
