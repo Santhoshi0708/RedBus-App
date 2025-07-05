@@ -30,8 +30,3 @@ This is a **RedBus-inspired mobile app** built using **React Native**. It includ
 
 ## 🚀 Getting Started
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/redbus-clone.git
-cd redbus-clone
